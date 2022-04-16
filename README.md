@@ -17,7 +17,7 @@
 
 3.  Clone git repository:
 
-        git clone ertyugfdsasdfghhgfdsarytr
+        git clone https://github.com/AkashDuttaCRJ/online-voting-backend.git
 
 4.  Run Virtual Environment:
 
