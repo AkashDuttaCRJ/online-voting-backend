@@ -2,12 +2,14 @@ from flask import Flask, request, jsonify
 import requests
 from decouple import config
 from functools import wraps
+import jwt
 import db
 
 app = Flask(__name__)
 
 # APP CONFIGS:
 twofactor_api_key = config('TWOFACTOR_API_KEY')
+jwt_secret = config('JWT_SECRET')
 
 
 # DECORATORS:
@@ -15,8 +17,8 @@ def verifyOTP(f=None):
     @wraps(f)
     def _verifyOTP(*args, **kwargs):
         # Testing Values - 
-        #   "sessionId": "34ed02e8-cf8b-4546-9380-226b8517b3fc"
-        #   "otp": "235826"
+        #   "sessionId": "c05332ac-9eae-4ac5-b0d9-d8e3765b1207"
+        #   "otp": "317624"
         if not 'sessionId' in request.json:
             return jsonify({ "error": "SessionID not found in request body!"}), 400
         session_id = request.json['sessionId']
@@ -29,6 +31,24 @@ def verifyOTP(f=None):
         return f(*args, **kwargs)
     return _verifyOTP
 
+def authenticate(f=None):
+    @wraps(f)
+    def _authenticate(*args, **kwargs):
+        # Testing Values - 
+        #   "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJwaG9uZSI6Ijg5MTA1NTcxMjEifQ.JVWo3TqeaoN481lNxWaZWGNvjsRzZdfxwjbTl2ezXO4"
+        if not 'Authorization' in request.headers:
+            return jsonify({ "error": "Token missing!"}), 400
+        bearer = request.headers['Authorization'].split(' ')[0]
+        if not bearer == 'Bearer':
+            return jsonify({ "error": "Invalid Authorization Request"}), 400
+        token = request.headers['Authorization'].split(' ')[-1]
+        try: 
+            jwt.decode(token, jwt_secret, algorithms=["HS256"])
+        except:
+            return jsonify({ "error": "Access Denied or Invalid Authorization Request!" }), 400
+        return f(*args, **kwargs)
+    return _authenticate
+
 # API ENDPOINTS: 
 
 # Note: DO NOT CALL THIS API ENDPOINT AS THE AMOUNT OF CREDIT IS LIMITED
@@ -39,6 +59,14 @@ def get_otp():
     phone_number = request.headers['phone']
     if not phone_number or not len(phone_number) == 10:
         return jsonify({ "error": "The provide phone number is Invalid!"}), 400
+    users = db.get_user_by_phoneNumber(phone_number)
+    if not 'type' in request.headers:
+        return jsonify({ "error": "Request type not found in request header!"}), 400
+    type = request.headers['type']
+    if type == 'login' and len(users) == 0:
+        return jsonify({ "error": "User not found! Sign up Instead "}), 400
+    if type == 'signup' and len(users) != 0:
+        return jsonify({ "error": "User already exists! Login Instead"}), 400
     # twoFactResp = requests.get(f'https://2factor.in/API/V1/{twofactor_api_key}/SMS/{phone_number}/AUTOGEN').json()
     # return jsonify(twoFactResp)
     return "Success"
@@ -50,8 +78,14 @@ def get_otp():
 # ======================================================================
 
 @app.route("/login")
+@verifyOTP
 def login():
-    return "Login"
+    if not 'phone' in request.headers:
+        return jsonify({ "error": "Phone number not found in request header!"}), 400
+    phone_number = request.headers['phone']
+    payload = {"phone": phone_number}
+    encoded_jwt = jwt.encode(payload, jwt_secret)
+    return jsonify({ 'token' : encoded_jwt })
 
 @app.route("/signup")
 @verifyOTP
@@ -75,6 +109,7 @@ def signup():
     return data
 
 @app.route("/")
+@authenticate
 def home():
     return "Hello World"
 

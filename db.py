@@ -14,3 +14,7 @@ def create_user(voterId, fullName, address, phoneNumber):
 def get_user_by_voterId(id):
     response = supabase.table('users-test').select("*").eq("voterId", id).execute()
     return response.data
+
+def get_user_by_phoneNumber(num):
+    response = supabase.table('users-test').select("*").eq("mobile", num).execute()
+    return response.data
