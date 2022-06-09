@@ -1,4 +1,5 @@
 from crypt import methods
+from venv import create
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import requests
@@ -7,6 +8,7 @@ from functools import wraps
 import jwt
 import db
 import blockchain as _blockchain
+import datetime
 
 app = Flask(__name__)
 CORS(app)
@@ -123,16 +125,71 @@ def signup():
     return jsonify({ 'token' : encoded_jwt })
 
 @app.route("/")
-@authenticate
+# @authenticate
 def home():
-    return "Hello World"
+    previous = []
+    upcoming = []
+    ongoing = []
+    today = datetime.datetime.now()
+    data = db.get_voteslist()
+    for vote in data:
+        if datetime.datetime.strptime(vote['endDate'], '%Y-%m-%dT%H:%M:%S') < today:
+            previous.append(vote)
+        elif datetime.datetime.strptime(vote['startDate'], '%Y-%m-%dT%H:%M:%S') > today:
+            upcoming.append(vote)
+        else:
+            ongoing.append(vote)
+    return jsonify([{'title': 'Ongoing', 'data': ongoing}, {'title': 'Upcoming', 'data': upcoming}, {'title': 'Previous', 'data': previous}])
+
+@app.route("/getdetails")
+def get_details():
+    voterId = request.args.get('voterId')
+    if not voterId:
+        return jsonify({ "error": "Invalid request!"}), 400
+    return ':like:'
+
+@app.route("/addvote", methods=['POST'])
+@authenticate
+def add_vote():
+    request_data = request.get_json()
+    if not 'voteId' in request_data:
+        return jsonify({ "error": "VoteId missing!"}), 400
+    if not 'candidateId' in request_data:
+        return jsonify({ "error": "CandidateId missing!"}), 400
+    if not 'userId' in request_data:
+        return jsonify({ "error": "UserId missing!"}), 400
+    voteId = int(request_data.json['voteId'])
+    candidateId = int(request_data.json['candidateId'])
+    userId = int(request_data.json['userId'])
+    blockchain.create_block(voteId, userId, candidateId)
+    return jsonify({ "success": "Vote added successfully!"})
 
 @app.route("/getresults")
 # @authenticate
 def get_results():
-    print(str(blockchain.read_chain()))
-    return 'hello'
+    VoteId = int(request.args.get('voteId'))
+    # USER ID DOESN'T MATTER HENCE HAVE BEEN KEPT UNCHANGED
+    blockchain.create_block('67a24622-a4c2-4f23-96d4-26740c1d375c',1,'154a6bde-6a67-4034-896f-72ac61739f38')
+    blockchain.create_block('67a24622-a4c2-4f23-96d4-26740c1d375c',2,'476573c0-e162-4c5f-a30b-40014678b17a')
+    blockchain.create_block('67a24622-a4c2-4f23-96d4-26740c1d375c',5,'476573c0-e162-4c5f-a30b-40014678b17a')
+    blockchain.create_block('67a24622-a4c2-4f23-96d4-26740c1d375c',4,'154a6bde-6a67-4034-896f-72ac61739f38')
+    blockchain.create_block('67a24622-a4c2-4f23-96d4-26740c1d375c',8,'476573c0-e162-4c5f-a30b-40014678b17a')
+    blockchain.create_block('67a24622-a4c2-4f23-96d4-26740c1d375c',3,'476573c0-e162-4c5f-a30b-40014678b17a')
+    blockchain.create_block('67a24622-a4c2-4f23-96d4-26740c1d375c',6,'154a6bde-6a67-4034-896f-72ac61739f38')
+    data = blockchain.read_chain()
+    results = [item for item in data if item['voteId'] == VoteId]
+    if results == []:
+        return jsonify({ "error": "No results found!"})
+    return jsonify(results)
 
+@app.route("/getvotedata")
+# @authenticate
+def get_vote_data():
+    voteId = request.args.get('voteId')
+    data = db.get_vote_data(voteId)
+    if data == None:
+        return jsonify({ "error": "No data found!"})
+    return jsonify(data[0])
 
 if __name__ == "__main__":
     app.run(debug=True)

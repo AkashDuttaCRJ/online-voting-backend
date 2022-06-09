@@ -11,7 +11,7 @@ class Blockchain:
         )
         self.chain.append(initial_block)
 
-    def create_block(self, vote_id: int, user_id: int, candidate_id: int) -> dict:
+    def create_block(self, vote_id: str, user_id: str, candidate_id: str) -> dict:
         data = {
             "voteId": vote_id,
             "userId": user_id,

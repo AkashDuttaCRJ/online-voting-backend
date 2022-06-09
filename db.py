@@ -18,3 +18,11 @@ def get_user_by_voterId(id):
 def get_user_by_phoneNumber(num):
     response = supabase.table('users-test').select("*").eq("mobile", num).execute()
     return response.data
+
+def get_voteslist():
+    response = supabase.table('voteslist-test').select("*").execute()
+    return response.data
+
+def get_vote_data(id):
+    response = supabase.table('voteslist-test').select("*").eq("id", id).execute()
+    return response.data
