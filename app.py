@@ -164,11 +164,12 @@ def add_vote():
     blockchain.create_block(voteId, userId, candidateId)
     return jsonify({ "success": "Vote added successfully!"})
 
-@app.route("/getresults")
+# @app.route("/getresults")
 # @authenticate
-def get_results():
-    VoteId = int(request.args.get('voteId'))
+def get_results(returnJson = True):
+    VoteId = request.args.get('voteId')
     # USER ID DOESN'T MATTER HENCE HAVE BEEN KEPT UNCHANGED
+    blockchain = _blockchain.Blockchain()
     blockchain.create_block('67a24622-a4c2-4f23-96d4-26740c1d375c',1,'154a6bde-6a67-4034-896f-72ac61739f38')
     blockchain.create_block('67a24622-a4c2-4f23-96d4-26740c1d375c',2,'476573c0-e162-4c5f-a30b-40014678b17a')
     blockchain.create_block('67a24622-a4c2-4f23-96d4-26740c1d375c',5,'476573c0-e162-4c5f-a30b-40014678b17a')
@@ -178,9 +179,13 @@ def get_results():
     blockchain.create_block('67a24622-a4c2-4f23-96d4-26740c1d375c',6,'154a6bde-6a67-4034-896f-72ac61739f38')
     data = blockchain.read_chain()
     results = [item for item in data if item['voteId'] == VoteId]
-    if results == []:
-        return jsonify({ "error": "No results found!"})
-    return jsonify(results)
+
+    if returnJson:
+        if results == []:
+            return jsonify({ "error": "No results found!"})
+        return jsonify(results)
+
+    return results
 
 @app.route("/getvotedata")
 # @authenticate
@@ -189,6 +194,32 @@ def get_vote_data():
     data = db.get_vote_data(voteId)
     if data == None:
         return jsonify({ "error": "No data found!"})
+
+    if request.args.get('completed') == False or request.args.get('completed') == None:
+        return jsonify(data[0])
+
+    result = [item for item in blockchain.read_chain() if item['voteId'] == voteId]
+    result = get_results(returnJson= False)
+ 
+    candidates = {}
+    for res in result:
+        if res['candidateId'] in candidates:
+            candidates[res['candidateId']]+= 1
+        else:
+            candidates[res['candidateId']] = 1
+
+    totalVotes = 0
+    for c in candidates:
+        totalVotes += candidates[c]
+
+    for cand in data[0]['candidates']:
+        if cand['id'] in candidates:
+            cand['no_of_votes'] = candidates[cand['id']]
+            cand['votes_perc'] = round((candidates[cand['id']] * 100) / totalVotes, 2)
+        else:
+            cand['no_of_votes'] = 0
+            cand['votes_perc'] = 0
+
     return jsonify(data[0])
 
 if __name__ == "__main__":
