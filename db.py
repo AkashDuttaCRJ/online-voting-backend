@@ -26,3 +26,7 @@ def get_voteslist():
 def get_vote_data(id):
     response = supabase.table('voteslist-test').select("*").eq("id", id).execute()
     return response.data
+
+def get_voter_data(voterid):
+    response = supabase.table('voters-test').select("*").eq("voterId", voterid).execute()
+    return response.data

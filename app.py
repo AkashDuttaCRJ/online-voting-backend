@@ -2,6 +2,7 @@ from crypt import methods
 from venv import create
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from jinja2 import Undefined
 import requests
 from decouple import config
 from functools import wraps
@@ -100,32 +101,36 @@ def login():
     phone_number = request_data['phoneNumber']
     payload = {"phone": phone_number}
     encoded_jwt = jwt.encode(payload, jwt_secret)
-    return jsonify({ 'token' : encoded_jwt })
+    data = db.get_user_by_phoneNumber(phone_number)
+    return jsonify({ 'data': data, 'token' : encoded_jwt })
 
-@app.route("/signup")
+@app.route("/signup", methods=['POST'])
 @verifyOTP
 def signup():
-    if not 'voterId' in request.json:
+    request_data = request.get_json()
+    if not 'voterId' in request_data:
         return jsonify({ "error": "Invalid request!"}), 400
-    if not 'fullName' in request.json:
+    if not 'fullName' in request_data:
         return jsonify({ "error": "Invalid request!"}), 400
-    if not 'address' in request.json:
+    if not 'address' in request_data:
         return jsonify({ "error": "Invalid request!"}), 400
-    if not 'phoneNumber' in request.json:
+    if not 'phoneNumber' in request_data:
         return jsonify({ "error": "Invalid request!"}), 400
-    voterId = request.json['voterId']
+    voterId = request_data['voterId']
     checkId = db.get_user_by_voterId(voterId)
     if not len(checkId) == 0:
         return jsonify({ "error": "User already exists! Login Instead" }), 400
-    phoneNumber = request.json['phoneNumber']
-    fullName = request.json['fullName']
-    address = request.json['address']
-    data = db.create_user(voterId, fullName, address, phoneNumber)
-    encoded_jwt = jwt.encode(data, jwt_secret)
-    return jsonify({ 'token' : encoded_jwt })
+    phoneNumber = request_data['phoneNumber']
+    fullName = request_data['fullName']
+    address = request_data['address']
+    db.create_user(voterId, fullName, address, phoneNumber)
+    payload = {"phone": phoneNumber}
+    encoded_jwt = jwt.encode(payload, jwt_secret)
+    data = db.get_user_by_phoneNumber(phoneNumber)
+    return jsonify({ 'data': data, 'token' : encoded_jwt })
 
 @app.route("/")
-# @authenticate
+@authenticate
 def home():
     previous = []
     upcoming = []
@@ -141,26 +146,48 @@ def home():
             ongoing.append(vote)
     return jsonify([{'title': 'Ongoing', 'data': ongoing}, {'title': 'Upcoming', 'data': upcoming}, {'title': 'Previous', 'data': previous}])
 
-@app.route("/getdetails")
+@app.route("/getvoterdata")
 def get_details():
     voterId = request.args.get('voterId')
     if not voterId:
         return jsonify({ "error": "Invalid request!"}), 400
-    return ':like:'
+    data  = db.get_voter_data(voterId)
+    if data == []:
+        return jsonify({})
+    return jsonify(data[0])
+
+@app.route("/isCompleted")
+def is_completed():
+    voteId = request.args.get('voteId')
+    userId = request.args.get('userId')
+    if not voteId or voteId == Undefined:
+        return jsonify({ "error": "Invalid request!"}), 400
+    if not userId or userId == Undefined:
+        return jsonify({ "error": "Invalid request!"}), 400
+    data = blockchain.read_chain()
+    results = [item for item in data if item['voteId'] == voteId and item['userId'] == userId]
+    if len(results) == 0:
+        return jsonify({ "isCompleted": False })
+    return jsonify({ "isCompleted": True })
 
 @app.route("/addvote", methods=['POST'])
 @authenticate
 def add_vote():
     request_data = request.get_json()
+    print(request)
     if not 'voteId' in request_data:
         return jsonify({ "error": "VoteId missing!"}), 400
     if not 'candidateId' in request_data:
         return jsonify({ "error": "CandidateId missing!"}), 400
     if not 'userId' in request_data:
         return jsonify({ "error": "UserId missing!"}), 400
-    voteId = int(request_data.json['voteId'])
-    candidateId = int(request_data.json['candidateId'])
-    userId = int(request_data.json['userId'])
+    voteId = request_data['voteId']
+    candidateId = request_data['candidateId']
+    userId = request_data['userId']
+    data = blockchain.read_chain()
+    results = [item for item in data if item['voteId'] == voteId and item['userId'] == userId]
+    if len(results) != 0:
+        return jsonify({ "error": "Vote already exists!"}), 400
     blockchain.create_block(voteId, userId, candidateId)
     return jsonify({ "success": "Vote added successfully!"})
 
@@ -188,9 +215,10 @@ def get_results(returnJson = True):
     return results
 
 @app.route("/getvotedata")
-# @authenticate
+@authenticate
 def get_vote_data():
     voteId = request.args.get('voteId')
+    userId = request.args.get('userId')
     data = db.get_vote_data(voteId)
     if data == None:
         return jsonify({ "error": "No data found!"})
@@ -199,7 +227,7 @@ def get_vote_data():
         return jsonify(data[0])
 
     result = [item for item in blockchain.read_chain() if item['voteId'] == voteId]
-    result = get_results(returnJson= False)
+    # result = get_results(returnJson= False)
  
     candidates = {}
     for res in result:
@@ -219,7 +247,9 @@ def get_vote_data():
         else:
             cand['no_of_votes'] = 0
             cand['votes_perc'] = 0
-
+    finalResult = [item for item in blockchain.read_chain() if item['voteId'] == voteId and item['userId'] == userId]
+    if finalResult == []:
+        data[0]['status'] = 'You didn\'t cast any vote!'
     return jsonify(data[0])
 
 if __name__ == "__main__":
