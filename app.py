@@ -131,12 +131,15 @@ def signup():
     return jsonify({ 'data': data, 'token' : encoded_jwt })
 
 @app.route("/")
-@authenticate
+# @authenticate
 def home():
     previous = []
     upcoming = []
     ongoing = []
     today = datetime.datetime.now(pytz.timezone('Asia/Kolkata'))
+    today = today.strftime('%Y-%m-%dT%H:%M:%S')
+    today = datetime.datetime.strptime(today, '%Y-%m-%dT%H:%M:%S')
+    print(today)
     data = db.get_voteslist()
     for vote in data:
         if datetime.datetime.strptime(vote['endDate'], '%Y-%m-%dT%H:%M:%S') < today:
