@@ -10,6 +10,7 @@ import jwt
 import db
 import blockchain as _blockchain
 import datetime
+import pytz
 
 app = Flask(__name__)
 CORS(app)
@@ -135,7 +136,7 @@ def home():
     previous = []
     upcoming = []
     ongoing = []
-    today = datetime.datetime.now()
+    today = datetime.datetime.now(pytz.timezone('Asia/Kolkata'))
     data = db.get_voteslist()
     for vote in data:
         if datetime.datetime.strptime(vote['endDate'], '%Y-%m-%dT%H:%M:%S') < today:
