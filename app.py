@@ -10,6 +10,7 @@ import jwt
 import db
 import blockchain as _blockchain
 import datetime
+import pytz
 
 app = Flask(__name__)
 CORS(app)
@@ -135,7 +136,7 @@ def home():
     previous = []
     upcoming = []
     ongoing = []
-    today = datetime.datetime.now()
+    today = datetime.datetime.now(pytz.timezone('Asia/Kolkata'))
     data = db.get_voteslist()
     for vote in data:
         if datetime.datetime.strptime(vote['endDate'], '%Y-%m-%dT%H:%M:%S') < today:
@@ -215,7 +216,7 @@ def get_results(returnJson = True):
     return results
 
 @app.route("/getvotedata")
-@authenticate
+# @authenticate
 def get_vote_data():
     voteId = request.args.get('voteId')
     userId = request.args.get('userId')
@@ -223,7 +224,7 @@ def get_vote_data():
     if data == None:
         return jsonify({ "error": "No data found!"})
 
-    if request.args.get('completed') == False or request.args.get('completed') == None:
+    if request.args.get('completed') == "false" or request.args.get('completed') == None:
         return jsonify(data[0])
 
     result = [item for item in blockchain.read_chain() if item['voteId'] == voteId]
