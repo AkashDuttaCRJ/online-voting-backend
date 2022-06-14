@@ -131,8 +131,11 @@ def signup():
     return jsonify({ 'data': data, 'token' : encoded_jwt })
 
 @app.route("/")
-# @authenticate
+@authenticate
 def home():
+    userId = request.args.get('userId')
+    if not userId or userId == Undefined:
+        return jsonify({ "error": "Invalid request!"}), 400
     previous = []
     upcoming = []
     ongoing = []
@@ -147,6 +150,7 @@ def home():
         elif datetime.datetime.strptime(vote['startDate'], '%Y-%m-%dT%H:%M:%S') > today:
             upcoming.append(vote)
         else:
+            vote['isCompleted'] = is_completed(userId, vote['id'])
             ongoing.append(vote)
     return jsonify([{'title': 'Ongoing', 'data': ongoing}, {'title': 'Upcoming', 'data': upcoming}, {'title': 'Previous', 'data': previous}])
 
@@ -160,10 +164,10 @@ def get_details():
         return jsonify({})
     return jsonify(data[0])
 
-@app.route("/isCompleted")
-def is_completed():
-    voteId = request.args.get('voteId')
-    userId = request.args.get('userId')
+# @app.route("/isCompleted")
+def is_completed(userId, voteId):
+    # voteId = request.args.get('voteId')
+    # userId = request.args.get('userId')
     if not voteId or voteId == Undefined:
         return jsonify({ "error": "Invalid request!"}), 400
     if not userId or userId == Undefined:
@@ -171,8 +175,10 @@ def is_completed():
     data = blockchain.read_chain()
     results = [item for item in data if item['voteId'] == voteId and item['userId'] == userId]
     if len(results) == 0:
-        return jsonify({ "isCompleted": False })
-    return jsonify({ "isCompleted": True })
+        # return jsonify({ "isCompleted": False })
+        return False
+    # return jsonify({ "isCompleted": True })
+    return True
 
 @app.route("/addvote", methods=['POST'])
 @authenticate
