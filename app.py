@@ -225,7 +225,7 @@ def get_results(returnJson = True):
     return results
 
 @app.route("/getvotedata")
-# @authenticate
+@authenticate
 def get_vote_data():
     voteId = request.args.get('voteId')
     userId = request.args.get('userId')
