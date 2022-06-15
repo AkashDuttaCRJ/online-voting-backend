@@ -142,7 +142,6 @@ def home():
     today = datetime.datetime.now(pytz.timezone('Asia/Kolkata'))
     today = today.strftime('%Y-%m-%dT%H:%M:%S')
     today = datetime.datetime.strptime(today, '%Y-%m-%dT%H:%M:%S')
-    print(today)
     data = db.get_voteslist()
     for vote in data:
         if datetime.datetime.strptime(vote['endDate'], '%Y-%m-%dT%H:%M:%S') < today:
@@ -151,6 +150,7 @@ def home():
             upcoming.append(vote)
         else:
             vote['isCompleted'] = is_completed(userId, vote['id'])
+            print(vote)
             ongoing.append(vote)
     return jsonify([{'title': 'Ongoing', 'data': ongoing}, {'title': 'Upcoming', 'data': upcoming}, {'title': 'Previous', 'data': previous}])
 
@@ -168,10 +168,6 @@ def get_details():
 def is_completed(userId, voteId):
     # voteId = request.args.get('voteId')
     # userId = request.args.get('userId')
-    if not voteId or voteId == Undefined:
-        return jsonify({ "error": "Invalid request!"}), 400
-    if not userId or userId == Undefined:
-        return jsonify({ "error": "Invalid request!"}), 400
     data = blockchain.read_chain()
     results = [item for item in data if item['voteId'] == voteId and item['userId'] == userId]
     if len(results) == 0:
@@ -184,7 +180,6 @@ def is_completed(userId, voteId):
 @authenticate
 def add_vote():
     request_data = request.get_json()
-    print(request)
     if not 'voteId' in request_data:
         return jsonify({ "error": "VoteId missing!"}), 400
     if not 'candidateId' in request_data:
