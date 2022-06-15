@@ -170,11 +170,12 @@ def is_completed(userId, voteId):
     # userId = request.args.get('userId')
     data = blockchain.read_chain()
     results = [item for item in data if item['voteId'] == voteId and item['userId'] == userId]
-    if len(results) == 0:
-        # return jsonify({ "isCompleted": False })
-        return False
-    # return jsonify({ "isCompleted": True })
-    return True
+    return not len(results) == 0
+    # if len(results) == 0:
+    #     # return jsonify({ "isCompleted": False })
+    #     return False
+    # # return jsonify({ "isCompleted": True })
+    # return True
 
 @app.route("/addvote", methods=['POST'])
 @authenticate

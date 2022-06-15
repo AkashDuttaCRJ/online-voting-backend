@@ -107,7 +107,7 @@ class Blockchain:
 
 
 # Reading the data for the whole blockchain
-    def read_chain( self ) -> dict:
+    def read_chain( self ) -> list:
         data = []
         for block in self.chain:
             if block['previous_hash'] == "0":
