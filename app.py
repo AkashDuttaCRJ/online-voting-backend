@@ -131,7 +131,7 @@ def signup():
     return jsonify({ 'data': data, 'token' : encoded_jwt })
 
 @app.route("/")
-@authenticate
+# @authenticate
 def home():
     userId = request.args.get('userId')
     if not userId or userId == Undefined:
@@ -150,7 +150,7 @@ def home():
             upcoming.append(vote)
         else:
             vote['isCompleted'] = is_completed(userId, vote['id'])
-            print(vote)
+            # print(is_completed(userId, vote['id']))
             ongoing.append(vote)
     return jsonify([{'title': 'Ongoing', 'data': ongoing}, {'title': 'Upcoming', 'data': upcoming}, {'title': 'Previous', 'data': previous}])
 
@@ -169,7 +169,8 @@ def is_completed(userId, voteId):
     # voteId = request.args.get('voteId')
     # userId = request.args.get('userId')
     data = blockchain.read_chain()
-    results = [item for item in data if item['voteId'] == voteId and item['userId'] == userId]
+    results = [item for item in data if item['vote'] == voteId and item['user'] == userId]
+    print(data)
     return not len(results) == 0
     # if len(results) == 0:
     #     # return jsonify({ "isCompleted": False })
@@ -191,7 +192,7 @@ def add_vote():
     candidateId = request_data['candidateId']
     userId = request_data['userId']
     data = blockchain.read_chain()
-    results = [item for item in data if item['voteId'] == voteId and item['userId'] == userId]
+    results = [item for item in data if item['vote'] == voteId and item['user'] == userId]
     if len(results) != 0:
         return jsonify({ "error": "Vote already exists!"}), 400
     blockchain.create_block(voteId, userId, candidateId)
@@ -232,15 +233,15 @@ def get_vote_data():
     if request.args.get('completed') == "false" or request.args.get('completed') == None:
         return jsonify(data[0])
 
-    result = [item for item in blockchain.read_chain() if item['voteId'] == voteId]
+    result = [item for item in blockchain.read_chain() if item['vote'] == voteId]
     # result = get_results(returnJson= False)
  
     candidates = {}
     for res in result:
-        if res['candidateId'] in candidates:
-            candidates[res['candidateId']]+= 1
+        if res['candidate'] in candidates:
+            candidates[res['candidate']]+= 1
         else:
-            candidates[res['candidateId']] = 1
+            candidates[res['candidate']] = 1
 
     totalVotes = 0
     for c in candidates:
@@ -253,10 +254,16 @@ def get_vote_data():
         else:
             cand['no_of_votes'] = 0
             cand['votes_perc'] = 0
-    finalResult = [item for item in blockchain.read_chain() if item['voteId'] == voteId and item['userId'] == userId]
+    finalResult = [item for item in blockchain.read_chain() if item['vote'] == voteId and item['user'] == userId]
     if finalResult == []:
         data[0]['status'] = 'You didn\'t cast any vote!'
     return jsonify(data[0])
+
+@app.route("/test")
+def test():
+    data = blockchain.read_chain()
+    print(data)
+    return 'success'
 
 if __name__ == "__main__":
     app.run(debug=True)

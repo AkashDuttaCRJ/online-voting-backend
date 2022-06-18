@@ -1,6 +1,8 @@
 import datetime as _dt
 import hashlib as _hashlib
 import json as _json
+import os
+import pickle as _pickle
 
 
 class Blockchain:
@@ -10,12 +12,14 @@ class Blockchain:
             data="genesis block", proof=1, previous_hash="0", index=1
         )
         self.chain.append(initial_block)
+        if os.path.exists("block.json"):
+            os.remove("block.json")
 
-    def create_block(self, vote_id: str, user_id: str, candidate_id: str) -> dict:
+    def create_block(self, vote_id: int, user_id: int, candidate_id: int) -> dict:
         data = {
-            "voteId": vote_id,
-            "userId": user_id,
-            "candidateId": candidate_id
+            "vote": vote_id,
+            "user": user_id,
+            "candidate": candidate_id
         }
         data = _json.dumps( data )
         previous_block = self.get_previous_block()
@@ -29,6 +33,11 @@ class Blockchain:
             data=data, proof=proof, previous_hash=previous_hash, index=index
         )
         self.chain.append(block)
+
+        with open("block.json", "a") as file:
+            _json.dump(self.chain, file)
+            # file.write(str(self.chain))
+
         return block
 
     def _create_block(
@@ -107,20 +116,19 @@ class Blockchain:
 
 
 # Reading the data for the whole blockchain
-    def read_chain( self ) -> list:
+    def read_chain( self ) -> dict:
         data = []
-        for block in self.chain:
+        chain = []
+
+        if os.path.exists("block"):
+            with open("block.json", "rb") as file:
+                chain = json.load(file)
+        else:
+            chain = self.chain
+
+        for block in chain:
             if block['previous_hash'] == "0":
                 continue
             data.append( _json.loads(block['data']) )
 
         return data
-
-
-
-# Testing
-if __name__ == "__main__":
-    bc = Blockchain()
-    bc.create_block(1,1,1)
-    bc.create_block(2,2,2)
-    print(str(bc.read_chain()))
